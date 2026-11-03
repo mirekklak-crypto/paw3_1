@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paw3_1.1</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="container">
+        <h1>Wyszukiwarka krajów wg stolicy (REST Countries)</h1>
+        <form id="search-form">
+            <input type="text" id="capital-input" placeholder="Wpisz nazwę stolicy..." required>
+            <button type="submit">Szukaj</button>
+        </form>
+        <div id="status-box" class="status"></div>
+        <table id="countries-table" style="display: none;">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Capital</th>
+                    <th>Population</th>
+                    <th>Region</th>
+                    <th>Subregion</th>
+                </tr>
+            </thead>
+            <tbody id="countries-tbody"></tbody>
+        </table>
+    </div>
+
+<script>
+    const form = document.getElementById('search-form'); 
+    const input = document.getElementById('capital-input');     
+    const statusBox = document.getElementById('status-box');
+    const table = document.getElementById('countries-table');
+    const tbody = document.getElementById('countries-tbody');
+
+    function setStatus(type, message) {
+      if (!type) {
+        statusBox.style.display = 'none';
+        statusBox.className = 'status';
+        return;
+      }
+      statusBox.className = `status ${type}`;
+      statusBox.textContent = message;
+      statusBox.style.display = 'block';
+    }
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const capital = input.value.trim().toLowerCase();
+
+      if (!capital) {
+        setStatus('error', 'Podaj nazwę stolicy przed rozpoczęciem wyszukiwania.');
+        table.style.display = 'none';
+        tbody.innerHTML = '';
+        return;
+      }
+
+      setStatus('loading', 'Wyszukiwanie danych...');
+      tbody.innerHTML = '';
+      table.style.display = 'none';
+
+      try {
+        const url = 'https://raw.githubusercontent.com/dr5hn/countries-states-cities-database/master/json/countries.json';
+        const response = await fetch(url);
+
+        if (!response.ok) {
+          throw new Error(`Błąd pobierania danych: HTTP ${response.status}`);
+        }
+
+        const countries = await response.json();
+
+        const results = countries.filter(c => 
+          c.capital && c.capital.toLowerCase() === capital
+        );
+
+        if (results.length === 0) {
+          const partialResults = countries.filter(c => 
+            c.capital && c.capital.toLowerCase().includes(capital)
+          );
+          if (partialResults.length === 0) {
+            setStatus('empty', `Nie znaleziono państwa ze stolicą "${input.value.trim()}".`);
+            return;
+          }
+          results.push(...partialResults);
+        }
+
+        setStatus(null);
+        table.style.display = 'table';
+
+        results.forEach(country => {
+          const row = document.createElement('tr');
+
+          const nameCell = document.createElement('td');
+          nameCell.textContent = country.name || 'Brak danych';
+
+          const capitalCell = document.createElement('td');
+          capitalCell.textContent = country.capital || 'Brak stolicy';
+
+          const populationCell = document.createElement('td');
+          const pop = Number(country.population);
+          populationCell.textContent = !isNaN(pop) && pop > 0
+            ? pop.toLocaleString('pl-PL')
+            : (country.population || 'Nieznana');
+
+          const regionCell = document.createElement('td');
+          regionCell.textContent = country.region || 'Brak danych';
+
+          const subregionCell = document.createElement('td');
+          subregionCell.textContent = country.subregion || 'Brak danych';
+
+          row.append(nameCell, capitalCell, populationCell, regionCell, subregionCell);
+          tbody.appendChild(row);
+        });
+
+      } catch (err) {
+        setStatus('error', `Wystąpił błąd podczas pobierania danych: ${err.message}`);
+      }
+    });
+</script>
+</body>
+</html>
